@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Find a Book — Dewey</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ── DESIGN TOKENS ─────────────────────────────────────── */
+  :root {
+    --gold:    #E8A020;
+    --gold-dk: #D4921A;
+    --navy:    #1B2A4A;
+    --coral:   #E05A3A;
+    --sky:     #5BB8D4;
+    --cream:   #FDF6EC;
+    --white:   #FFFFFF;
+    --gray:    #F0EDE8;
+    --text:    #2C2C2C;
+    --muted:   #7A7060;
+    --radius:  16px;
+    --shadow:  0 4px 24px rgba(27,42,74,0.10);
+    --shadow-hover: 0 8px 36px rgba(27,42,74,0.18);
+  }
+
+  /* ── RESET & BASE ──────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    min-height: 100%;
+    background: var(--cream);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  /* ── HEADER ────────────────────────────────────────────── */
+  .site-header {
+    background: var(--navy);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  }
+
+  .header-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--gold);
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .header-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.5rem;
+    color: var(--white);
+    letter-spacing: 0.02em;
+  }
+
+  .header-title span { color: var(--gold); }
+
+  .header-back {
+    margin-left: auto;
+    background: none;
+    border: 2px solid rgba(255,255,255,0.25);
+    color: var(--white);
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 50px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .header-back:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.5); }
+
+  /* ── MAIN CONTAINER ────────────────────────────────────── */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+  }
+
+  /* ── SCREENS (one visible at a time) ───────────────────── */
+  .screen {
+    display: none;
+    animation: fadeUp 0.35s ease both;
+  }
+  .screen.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── BREADCRUMB ────────────────────────────────────────── */
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 18px 0 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .breadcrumb-item {
+    cursor: pointer;
+    color: var(--navy);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .breadcrumb-item:hover { color: var(--coral); }
+  .breadcrumb-sep { color: var(--muted); }
+  .breadcrumb-current { color: var(--muted); }
+
+  /* ── PAGE HEADING ──────────────────────────────────────── */
+  .page-heading {
+    text-align: center;
+    padding: 36px 0 28px;
+  }
+  .page-heading h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    color: var(--navy);
+    line-height: 1.15;
+    margin-bottom: 10px;
+  }
+  .page-heading h1 span { color: var(--coral); }
+  .page-heading p {
+    font-size: 1rem;
+    color: var(--muted);
+    font-weight: 600;
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.5;
+  }
+
+  /* ── WHO ARE YOU — two big cards ───────────────────────── */
+  .who-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 620px;
+    margin: 0 auto;
+    padding-bottom: 40px;
+  }
+
+  @media (max-width: 480px) { .who-grid { grid-template-columns: 1fr; } }
+
+  .who-card {
+    background: var(--white);
+    border-radius: 24px;
+    padding: 40px 28px 36px;
+    text-align: center;
+    cursor: pointer;
+    border: 3px solid transparent;
+    box-shadow: var(--shadow);
+    transition: all 0.22s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .who-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.22s;
+    border-radius: 21px;
+  }
+  .who-card.student::before { background: linear-gradient(135deg, rgba(232,160,32,0.08), rgba(91,184,212,0.08)); }
+  .who-card.teacher::before { background: linear-gradient(135deg, rgba(224,90,58,0.08), rgba(27,42,74,0.06)); }
+  .who-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
+  .who-card:hover::before { opacity: 1; }
+  .who-card.student:hover { border-color: var(--gold); }
+  .who-card.teacher:hover { border-color: var(--coral); }
+
+  .who-icon {
+    font-size: 3.2rem;
+    margin-bottom: 16px;
+    display: block;
+  }
+  .who-card h2 {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.5rem;
+    color: var(--navy);
+    margin-bottom: 10px;
+  }
+  .who-card p {
+    font-size: 0.88rem;
+    color: var(--muted);
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  .who-card .card-accent {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 8px 22px;
+    border-radius: 50px;
+    font-weight: 800;
+    font-size: 0.88rem;
+    letter-spacing: 0.03em;
+  }
+  .who-card.student .card-accent { background: var(--gold); color: var(--navy); }
+  .who-card.teacher .card-accent { background: var(--coral); color: var(--white); }
+
+  /* ── BROWSE GRID ───────────────────────────────────────── */
+  .section-label {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    margin-top: 4px;
+  }
+
+  .browse-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  @media (max-width: 480px) {
+    .browse-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  }
+
+  .browse-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 22px 14px 18px;
+    text-align: center;
+    cursor: pointer;
+    border: 2.5px solid transparent;
+    box-shadow: var(--shadow);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .browse-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+  }
+  .browse-card:active { transform: scale(0.97); }
+
+  .browse-card .bc-icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 10px;
+    line-height: 1;
+  }
+  .browse-card .bc-label {
+    font-weight: 800;
+    font-size: 0.88rem;
+    color: var(--navy);
+    line-height: 1.3;
+  }
+  .browse-card .bc-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 600;
+    margin-top: 4px;
+    line-height: 1.3;
+  }
+
+  /* Colorful accent bars on browse cards */
+  .browse-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 4px;
+    border-radius: 0 0 13px 13px;
+    transition: height 0.2s;
+  }
+  .browse-card:hover::after { height: 6px; }
+  .bc-gold::after  { background: var(--gold); }
+  .bc-coral::after { background: var(--coral); }
+  .bc-sky::after   { background: var(--sky); }
+  .bc-navy::after  { background: var(--navy); }
+  .bc-green::after { background: #52B788; }
+  .bc-purple::after{ background: #9B72CF; }
+  .bc-pink::after  { background: #E07AAC; }
+  .bc-teal::after  { background: #3AADA8; }
+
+  .bc-gold:hover  { border-color: var(--gold); }
+  .bc-coral:hover { border-color: var(--coral); }
+  .bc-sky:hover   { border-color: var(--sky); }
+  .bc-navy:hover  { border-color: var(--navy); }
+  .bc-green:hover { border-color: #52B788; }
+  .bc-purple:hover{ border-color: #9B72CF; }
+  .bc-pink:hover  { border-color: #E07AAC; }
+  .bc-teal:hover  { border-color: #3AADA8; }
+
+  /* ── QUICK TITLE SEARCH ─────────────────────────────────── */
+  .title-search-wrap {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 40px;
+  }
+  .title-search-wrap h3 {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.05rem;
+    color: var(--navy);
+    margin-bottom: 12px;
+  }
+  .search-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .search-input {
+    flex: 1;
+    padding: 14px 18px;
+    border-radius: 50px;
+    border: 2.5px solid var(--gray);
+    font-family: 'Nunito', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--cream);
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .search-input:focus { border-color: var(--gold); background: var(--white); }
+  .search-input::placeholder { color: var(--muted); font-weight: 600; }
+  .search-btn {
+    padding: 14px 24px;
+    border-radius: 50px;
+    background: var(--navy);
+    color: var(--white);
+    border: none;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    white-space: nowrap;
+  }
+  .search-btn:hover { background: var(--coral); transform: scale(1.03); }
+  .search-btn:active { transform: scale(0.97); }
+
+  /* ── TEACHER EXTRAS ─────────────────────────────────────── */
+  .divider {
+    height: 1px;
+    background: var(--gray);
+    margin: 8px 0 28px;
+    border-radius: 2px;
+  }
+
+  /* ── FILTER CHIPS (grade level refinement) ──────────────── */
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .chip {
+    padding: 8px 18px;
+    border-radius: 50px;
+    border: 2px solid var(--gray);
+    background: var(--white);
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--navy);
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .chip:hover { border-color: var(--sky); background: #EEF8FC; }
+  .chip.active { background: var(--navy); color: var(--white); border-color: var(--navy); }
+
+  /* ── RESULTS AREA ───────────────────────────────────────── */
+  .results-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .results-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem;
+    color: var(--navy);
+  }
+  .results-count {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  /* Grade filter row shown in results */
+  .grade-filter-bar {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+    display: none;
+  }
+  .grade-filter-bar.visible { display: block; }
+  .grade-filter-bar h4 {
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+
+  /* ── BOOK CARDS ─────────────────────────────────────────── */
+  .books-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 18px;
+  }
+
+  @media (max-width: 480px) {
+    .books-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  }
+
+  .book-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: all 0.22s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .book-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+  }
+
+  .book-cover {
+    width: 100%;
+    aspect-ratio: 2/3;
+    object-fit: cover;
+    background: var(--gray);
+    display: block;
+  }
+  .book-cover-placeholder {
+    width: 100%;
+    aspect-ratio: 2/3;
+    background: linear-gradient(135deg, var(--navy) 0%, #2E4A7A 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    text-align: center;
+  }
+  .book-cover-placeholder .placeholder-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.9);
+    line-height: 1.3;
+    margin-bottom: 8px;
+  }
+  .book-cover-placeholder .placeholder-author {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.55);
+    font-weight: 600;
+  }
+
+  .book-info {
+    padding: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .book-title {
+    font-weight: 800;
+    font-size: 0.82rem;
+    color: var(--navy);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .book-author {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 600;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .book-tag {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 3px 10px;
+    border-radius: 50px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    background: var(--gray);
+    color: var(--navy);
+    align-self: flex-start;
+  }
+
+  /* ── BOOK DETAIL MODAL ──────────────────────────────────── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,18,36,0.65);
+    z-index: 200;
+    padding: 20px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-overlay.open { display: flex; align-items: flex-start; justify-content: center; }
+
+  .modal {
+    background: var(--white);
+    border-radius: 24px;
+    max-width: 560px;
+    width: 100%;
+    margin: auto;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.28);
+    animation: modalIn 0.28s ease both;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.94) translateY(20px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-header {
+    background: var(--navy);
+    padding: 20px 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+  }
+  .modal-cover {
+    width: 80px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .modal-cover img { width: 100%; display: block; }
+  .modal-cover-placeholder {
+    width: 80px;
+    aspect-ratio: 2/3;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .modal-title-block { flex: 1; }
+  .modal-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.2rem;
+    color: var(--white);
+    line-height: 1.25;
+    margin-bottom: 6px;
+  }
+  .modal-author {
+    font-size: 0.88rem;
+    color: rgba(255,255,255,0.65);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .modal-close {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: var(--white);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.18s;
+    font-weight: 700;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.28); }
+
+  .modal-body { padding: 24px; }
+
+  .modal-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 18px;
+  }
+  .modal-tag {
+    padding: 5px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+  .tag-gold   { background: #FEF3DC; color: #8C5800; }
+  .tag-sky    { background: #E0F4FB; color: #1A6A85; }
+  .tag-coral  { background: #FDEEE9; color: #8C2D15; }
+  .tag-green  { background: #E3F5EC; color: #1A6640; }
+  .tag-purple { background: #F0EAFA; color: #5B2E91; }
+  .tag-navy   { background: #E8EBF2; color: var(--navy); }
+
+  .modal-synopsis {
+    font-size: 0.92rem;
+    color: var(--text);
+    line-height: 1.65;
+    margin-bottom: 20px;
+  }
+
+  .modal-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .meta-item { }
+  .meta-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .meta-value {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .modal-themes {
+    margin-bottom: 16px;
+  }
+  .modal-themes .meta-label { margin-bottom: 8px; }
+  .theme-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .theme-chip {
+    padding: 4px 12px;
+    border-radius: 50px;
+    background: var(--gray);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--navy);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .theme-chip:hover { background: var(--gold); color: var(--navy); }
+
+  /* Teacher-only modal section */
+  .modal-teacher-section {
+    background: #F0EDE8;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 4px;
+    display: none;
+  }
+  .modal-teacher-section.visible { display: block; }
+  .modal-teacher-section .meta-label { margin-bottom: 10px; }
+  .curriculum-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .curriculum-list li {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--navy);
+    padding-left: 14px;
+    position: relative;
+  }
+  .curriculum-list li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: var(--coral);
+    font-weight: 900;
+  }
+
+  /* ── LOADING STATE ───────────────────────────────────────── */
+  .loading-state {
+    text-align: center;
+    padding: 60px 20px;
+  }
+  .loading-owl {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 16px;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.75; }
+  }
+  .loading-state p {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    color: var(--muted);
+  }
+
+  /* ── EMPTY STATE ─────────────────────────────────────────── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+  }
+  .empty-state p {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.15rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .empty-state .try-again {
+    background: var(--navy);
+    color: var(--white);
+    border: none;
+    padding: 12px 28px;
+    border-radius: 50px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .empty-state .try-again:hover { background: var(--coral); }
+
+  /* ── LOAD MORE ───────────────────────────────────────────── */
+  .load-more-wrap { text-align: center; margin-top: 32px; }
+  .load-more-btn {
+    background: var(--white);
+    border: 2.5px solid var(--navy);
+    color: var(--navy);
+    padding: 13px 36px;
+    border-radius: 50px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .load-more-btn:hover { background: var(--navy); color: var(--white); }
+
+  /* ── UTILITY ─────────────────────────────────────────────── */
+  .hidden { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <img src="dewey-logo.jpg" alt="Dewey" class="header-logo" onerror="this.style.display='none'">
+  <div class="header-title">Dew<span>ey</span></div>
+  <a href="index.html" class="header-back">← Home</a>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCREEN 1 — WHO ARE YOU?
+════════════════════════════════════════════════════════════ -->
+<div class="screen active" id="screen-who">
+  <div class="container">
+    <div class="page-heading">
+      <h1>Find a <span>Book</span></h1>
+      <p>Tell Dewey who you are and we'll help you discover something great.</p>
+    </div>
+    <div class="who-grid">
+      <div class="who-card student" onclick="chooseUser('student')">
+        <span class="who-icon">📖</span>
+        <h2>I'm a Student</h2>
+        <p>Find your next favorite book by genre, mood, theme, and more.</p>
+        <span class="card-accent">Browse Books</span>
+      </div>
+      <div class="who-card teacher" onclick="chooseUser('teacher')">
+        <span class="who-icon">🍎</span>
+        <h2>I'm a Teacher</h2>
+        <p>Find books for your classroom, curriculum units, and reading lists.</p>
+        <span class="card-accent">Explore Collection</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCREEN 2A — STUDENT BROWSE
+════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-student">
+  <div class="container">
+    <div class="breadcrumb">
+      <span class="breadcrumb-item" onclick="goTo('screen-who')">Find a Book</span>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Student</span>
+    </div>
+
+    <div class="page-heading" style="padding-top:24px;">
+      <h1>What kind of book <span>sounds good?</span></h1>
+      <p>Pick a way to browse — or search for a specific title below.</p>
+    </div>
+
+    <!-- Browse options grid -->
+    <p class="section-label">Browse by</p>
+    <div class="browse-grid">
+      <div class="browse-card bc-gold" onclick="browseBy('genre','student')">
+        <span class="bc-icon">🌟</span>
+        <div class="bc-label">Genre</div>
+        <div class="bc-sub">Fantasy, Mystery, Sci-Fi & more</div>
+      </div>
+      <div class="browse-card bc-purple" onclick="browseBy('mood','student')">
+        <span class="bc-icon">😄</span>
+        <div class="bc-label">Mood</div>
+        <div class="bc-sub">Funny, heartwarming, suspenseful…</div>
+      </div>
+      <div class="browse-card bc-coral" onclick="browseBy('theme','student')">
+        <span class="bc-icon">💡</span>
+        <div class="bc-label">Theme</div>
+        <div class="bc-sub">Friendship, courage, identity…</div>
+      </div>
+      <div class="browse-card bc-sky" onclick="browseBy('grade','student')">
+        <span class="bc-icon">📚</span>
+        <div class="bc-label">Grade Level</div>
+        <div class="bc-sub">Find books just right for you</div>
+      </div>
+      <div class="browse-card bc-green" onclick="browseBy('series','student')">
+        <span class="bc-icon">📦</span>
+        <div class="bc-label">Series</div>
+        <div class="bc-sub">Follow a story from book to book</div>
+      </div>
+      <div class="browse-card bc-teal" onclick="browseBy('language','student')">
+        <span class="bc-icon">🌎</span>
+        <div class="bc-label">Language</div>
+        <div class="bc-sub">English, Spanish, Bilingual</div>
+      </div>
+      <div class="browse-card bc-pink" onclick="browseBy('format','student')">
+        <span class="bc-icon">🎨</span>
+        <div class="bc-label">Format</div>
+        <div class="bc-sub">Graphic novels, poetry & more</div>
+      </div>
+      <div class="browse-card bc-navy" onclick="browseBy('diversity','student')">
+        <span class="bc-icon">🌍</span>
+        <div class="bc-label">Diverse Stories</div>
+        <div class="bc-sub">Characters from all backgrounds</div>
+      </div>
+    </div>
+
+    <!-- Quick title search -->
+    <div class="title-search-wrap">
+      <h3>Looking for a specific book?</h3>
+      <div class="search-row">
+        <input class="search-input" id="student-title-input" type="text"
+               placeholder="Type a book title or author name…"
+               onkeydown="if(event.key==='Enter') doTitleSearch('student')">
+        <button class="search-btn" onclick="doTitleSearch('student')">Search</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCREEN 2B — TEACHER BROWSE
+════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-teacher">
+  <div class="container">
+    <div class="breadcrumb">
+      <span class="breadcrumb-item" onclick="goTo('screen-who')">Find a Book</span>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Teacher</span>
+    </div>
+
+    <div class="page-heading" style="padding-top:24px;">
+      <h1>Explore the <span>Collection</span></h1>
+      <p>Browse by curriculum, theme, or reading level — then filter results further.</p>
+    </div>
+
+    <!-- Teacher browse options -->
+    <p class="section-label">Browse by</p>
+    <div class="browse-grid">
+      <div class="browse-card bc-coral" onclick="browseBy('curriculum','teacher')">
+        <span class="bc-icon">📐</span>
+        <div class="bc-label">Curriculum</div>
+        <div class="bc-sub">Science, Social Studies, ELA…</div>
+      </div>
+      <div class="browse-card bc-gold" onclick="browseBy('genre','teacher')">
+        <span class="bc-icon">🌟</span>
+        <div class="bc-label">Genre</div>
+        <div class="bc-sub">Fiction, Nonfiction & more</div>
+      </div>
+      <div class="browse-card bc-coral" onclick="browseBy('theme','teacher')">
+        <span class="bc-icon">💡</span>
+        <div class="bc-label">Theme</div>
+        <div class="bc-sub">Build thematic read-aloud sets</div>
+      </div>
+      <div class="browse-card bc-sky" onclick="browseBy('grade','teacher')">
+        <span class="bc-icon">📊</span>
+        <div class="bc-label">Grade Level</div>
+        <div class="bc-sub">Match books to your students</div>
+      </div>
+      <div class="browse-card bc-green" onclick="browseBy('diversity','teacher')">
+        <span class="bc-icon">🌍</span>
+        <div class="bc-label">Diverse Voices</div>
+        <div class="bc-sub">Author & character identity tags</div>
+      </div>
+      <div class="browse-card bc-teal" onclick="browseBy('language','teacher')">
+        <span class="bc-icon">🌎</span>
+        <div class="bc-label">Language</div>
+        <div class="bc-sub">English, Spanish, Bilingual</div>
+      </div>
+      <div class="browse-card bc-purple" onclick="browseBy('mood','teacher')">
+        <span class="bc-icon">😄</span>
+        <div class="bc-label">Mood & Tone</div>
+        <div class="bc-sub">Curate by feel and atmosphere</div>
+      </div>
+      <div class="browse-card bc-navy" onclick="browseBy('format','teacher')">
+        <span class="bc-icon">🎨</span>
+        <div class="bc-label">Format</div>
+        <div class="bc-sub">Graphic novels, poetry & more</div>
+      </div>
+    </div>
+
+    <!-- Quick title search -->
+    <div class="title-search-wrap">
+      <h3>Search by title or author</h3>
+      <div class="search-row">
+        <input class="search-input" id="teacher-title-input" type="text"
+               placeholder="Type a book title or author name…"
+               onkeydown="if(event.key==='Enter') doTitleSearch('teacher')">
+        <button class="search-btn" onclick="doTitleSearch('teacher')">Search</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCREEN 3 — FILTER PICKER (choose a value within a category)
+════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-filter">
+  <div class="container">
+    <div class="breadcrumb" id="filter-breadcrumb"></div>
+    <div class="page-heading" style="padding-top:24px;">
+      <h1 id="filter-heading">Choose a <span>category</span></h1>
+      <p id="filter-subheading">Tap one to see matching books.</p>
+    </div>
+    <div class="browse-grid" id="filter-options-grid"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCREEN 4 — RESULTS
+════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-results">
+  <div class="container">
+    <div class="breadcrumb" id="results-breadcrumb"></div>
+
+    <div style="padding-top:20px;">
+      <div class="results-header">
+        <div class="results-title" id="results-title">Results</div>
+        <div class="results-count" id="results-count"></div>
+      </div>
+
+      <!-- Grade level filter bar — visible in teacher mode after browsing -->
+      <div class="grade-filter-bar" id="grade-filter-bar">
+        <h4>Refine by Grade Level</h4>
+        <div class="chip-row" id="grade-chip-row"></div>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading-state hidden" id="loading-state">
+        <span class="loading-owl">🦉</span>
+        <p>Dewey is searching…</p>
+      </div>
+
+      <!-- Results grid -->
+      <div class="books-grid" id="books-grid"></div>
+
+      <!-- Empty state -->
+      <div class="empty-state hidden" id="empty-state">
+        <p>No books found — try a different search.</p>
+        <button class="try-again" onclick="history.back()">Go Back</button>
+      </div>
+
+      <!-- Load more -->
+      <div class="load-more-wrap hidden" id="load-more-wrap">
+        <button class="load-more-btn" onclick="loadMore()">Show More Books</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     BOOK DETAIL MODAL
+════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div id="modal-cover-wrap"></div>
+      <div class="modal-title-block">
+        <div class="modal-title" id="modal-title"></div>
+        <div class="modal-author" id="modal-author"></div>
+        <div class="modal-tags" id="modal-header-tags"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-synopsis" id="modal-synopsis"></p>
+      <div class="modal-meta" id="modal-meta"></div>
+      <div class="modal-themes" id="modal-themes-wrap">
+        <div class="meta-label">Themes</div>
+        <div class="theme-chips" id="modal-theme-chips"></div>
+      </div>
+      <div class="modal-teacher-section" id="modal-teacher-section">
+        <div class="meta-label">Curriculum Connections</div>
+        <ul class="curriculum-list" id="modal-curriculum"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let allBooks      = [];         // full library array, loaded once
+let dataLoaded    = false;
+let currentUser   = null;       // 'student' | 'teacher'
+let activeFilter  = null;       // { type, value }
+let displayedBooks = [];        // current filtered set
+let displayCount  = 48;         // how many cards shown
+const PAGE_SIZE   = 48;
+
+let selectedGrade = null;       // active grade chip
+
+// ════════════════════════════════════════════════════════════
+//  DATA LOADING
+// ════════════════════════════════════════════════════════════
+async function loadData() {
+  if (dataLoaded) return;
+  try {
+    // library-data.json.gz is served by GitHub Pages.
+    // Browsers decompress gzip automatically when Content-Encoding is set.
+    // GitHub Pages sets this correctly for .gz files.
+    const res = await fetch('library-data.json.gz');
+    const buf = await res.arrayBuffer();
+
+    // Decompress using DecompressionStream (supported on all modern browsers/iPads)
+    const ds  = new DecompressionStream('gzip');
+    const writer = ds.writable.getWriter();
+    writer.write(new Uint8Array(buf));
+    writer.close();
+    const decompressed = await new Response(ds.readable).arrayBuffer();
+    const text = new TextDecoder().decode(decompressed);
+    allBooks = JSON.parse(text);
+    dataLoaded = true;
+  } catch (err) {
+    console.error('Failed to load library data:', err);
+    // Fallback: try plain JSON (for local testing)
+    try {
+      const res = await fetch('library-data.json');
+      allBooks = await res.json();
+      dataLoaded = true;
+    } catch(e) {
+      console.error('Fallback also failed:', e);
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════════════
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function chooseUser(userType) {
+  currentUser = userType;
+  selectedGrade = null;
+  loadData(); // start loading in background
+  goTo(userType === 'student' ? 'screen-student' : 'screen-teacher');
+}
+
+// ════════════════════════════════════════════════════════════
+//  BROWSE BY CATEGORY — builds the filter picker screen
+// ════════════════════════════════════════════════════════════
+const CATEGORY_CONFIG = {
+  genre: {
+    label: 'Genre',
+    field: 'Genre_Readable',
+    heading: 'Choose a Genre',
+    sub: 'What kind of story are you in the mood for?',
+    colors: ['bc-gold','bc-coral','bc-sky','bc-navy','bc-green','bc-purple','bc-pink','bc-teal'],
+    icons: {'Fantasy':'🧙','Mystery':'🔍','Realistic Fiction':'🏠','Historical Fiction':'⚔️',
+            'Science Fiction':'🚀','Biography':'👤','Science and Nature':'🌿','Sports':'⚽',
+            'Humor':'😂','Horror':'👻','Adventure':'🗺️','Poetry':'✍️','Graphic Novel':'🎨',
+            'Folktales and Mythology':'🌙','Default':'📖'}
+  },
+  mood: {
+    label: 'Mood',
+    field: 'Mood_Tags',
+    heading: 'How do you want to feel?',
+    sub: 'Pick a mood and find books that match.',
+    colors: ['bc-purple','bc-gold','bc-coral','bc-sky','bc-teal','bc-green','bc-pink','bc-navy'],
+    icons: {'funny':'😂','heartwarming':'❤️','suspenseful':'😬','scary':'👻',
+            'uplifting':'✨','emotional':'😢','exciting':'⚡','thought-provoking':'🤔',
+            'inspiring':'🌟','light and fun':'😄','Default':'😊'}
+  },
+  theme: {
+    label: 'Theme',
+    field: 'Themes',
+    heading: 'Choose a Theme',
+    sub: 'What do you want your book to be about?',
+    colors: ['bc-coral','bc-sky','bc-gold','bc-green','bc-purple','bc-navy','bc-pink','bc-teal'],
+    icons: {'friendship':'🤝','courage':'💪','identity':'🪞','family':'👨‍👩‍👧','adventure':'🗺️',
+            'growing up':'🌱','justice':'⚖️','survival':'🏔️','love':'❤️','loss':'💙',
+            'teamwork':'🏆','nature':'🌿','Default':'💡'}
+  },
+  grade: {
+    label: 'Grade Level',
+    field: 'Grade_Level',
+    heading: 'Choose a Grade Level',
+    sub: 'Find books matched to your grade.',
+    colors: ['bc-sky','bc-gold','bc-coral','bc-green','bc-navy','bc-purple','bc-pink','bc-teal'],
+    icons: {'PreK-K':'🌈','Grades 1-2':'⭐','Grades 2-3':'🌟','Grades 3-4':'📗',
+            'Grades 4-5':'📘','Grades 4-6':'📙','Grades 5-7':'📕','Grades 6-8':'🎓',
+            'Grades 7-9':'🏫','Grades 9-12':'🎓','Default':'📚'}
+  },
+  series: {
+    label: 'Series',
+    field: 'Series_Name_AI',
+    heading: 'Choose a Series',
+    sub: 'Find all the books in a series.',
+    colors: ['bc-green','bc-gold','bc-coral','bc-sky','bc-navy','bc-purple','bc-pink','bc-teal'],
+    icons: {'Default':'📦'}
+  },
+  language: {
+    label: 'Language',
+    field: 'Language_Verified',
+    heading: 'Choose a Language',
+    sub: 'Browse by the language the book is written in.',
+    colors: ['bc-teal','bc-gold','bc-coral'],
+    icons: {'English':'🇺🇸','Spanish':'🇲🇽','Bilingual':'🌎','Default':'📖'}
+  },
+  format: {
+    label: 'Format',
+    field: 'Format_Tags',
+    heading: 'Choose a Format',
+    sub: 'Graphic novels, poetry, picture books, and more.',
+    colors: ['bc-pink','bc-gold','bc-coral','bc-sky','bc-navy','bc-green'],
+    icons: {'graphic novel':'🎨','picture book with photographs':'📷','novel in verse':'✍️',
+            'picture book':'🖼️','chapter book':'📖','Default':'📚'}
+  },
+  diversity: {
+    label: 'Diverse Stories',
+    field: 'Diversity_Themes',
+    heading: 'Stories from All Backgrounds',
+    sub: 'Find books that celebrate diverse voices and experiences.',
+    colors: ['bc-coral','bc-sky','bc-gold','bc-green','bc-purple','bc-navy'],
+    icons: {'Default':'🌍'}
+  },
+  curriculum: {
+    label: 'Curriculum',
+    field: 'Curriculum_Connections',
+    heading: 'Choose a Subject Area',
+    sub: 'Find books connected to your curriculum and units.',
+    colors: ['bc-coral','bc-gold','bc-sky','bc-green','bc-navy','bc-purple','bc-teal','bc-pink'],
+    icons: {'Science':'🔬','Social Studies':'🌐','Language Arts':'✏️','Math':'🔢',
+            'History':'📜','ELA':'📝','Art':'🎨','Health':'🏃','Default':'📐'}
+  }
+};
+
+async function browseBy(type, userType) {
+  currentUser = userType;
+  activeFilter = { type };
+  selectedGrade = null;
+
+  // Show loading briefly while data loads
+  buildBreadcrumb('filter-breadcrumb', type);
+  goTo('screen-filter');
+
+  if (!dataLoaded) {
+    document.getElementById('filter-options-grid').innerHTML =
+      '<div class="loading-state"><span class="loading-owl">🦉</span><p>Loading collection…</p></div>';
+    await loadData();
+  }
+
+  const cfg = CATEGORY_CONFIG[type];
+  document.getElementById('filter-heading').innerHTML =
+    cfg.heading.replace(/(Genre|Level|Language|Format|Theme|Mood|Series|Subject Area|Backgrounds)/, '<span>$1</span>');
+  document.getElementById('filter-subheading').textContent = cfg.sub;
+
+  // Collect unique values
+  const freq = {};
+  allBooks.forEach(b => {
+    const raw = b[cfg.field];
+    if (!raw) return;
+    // Some fields are comma-separated lists — split and count each tag
+    const vals = raw.split(',').map(v => v.trim()).filter(Boolean);
+    vals.forEach(v => {
+      const key = v.charAt(0).toUpperCase() + v.slice(1);
+      freq[key] = (freq[key] || 0) + 1;
+    });
+  });
+
+  // Sort by frequency, take top 40
+  let options = Object.entries(freq)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0,40)
+    .map(([val, count]) => ({ val, count }));
+
+  const grid = document.getElementById('filter-options-grid');
+  grid.innerHTML = '';
+
+  options.forEach(({ val, count }, i) => {
+    const color = cfg.colors[i % cfg.colors.length];
+    const icon = cfg.icons[val] || cfg.icons['Default'] || '📖';
+    const card = document.createElement('div');
+    card.className = `browse-card ${color}`;
+    card.innerHTML = `
+      <span class="bc-icon">${icon}</span>
+      <div class="bc-label">${val}</div>
+      <div class="bc-sub">${count} book${count!==1?'s':''}</div>`;
+    card.onclick = () => showResults(type, val);
+    grid.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  SHOW RESULTS
+// ════════════════════════════════════════════════════════════
+function showResults(filterType, filterValue) {
+  activeFilter = { type: filterType, value: filterValue };
+  selectedGrade = null;
+  displayCount = PAGE_SIZE;
+
+  buildBreadcrumb('results-breadcrumb', filterType, filterValue);
+
+  const cfg = CATEGORY_CONFIG[filterType];
+  const field = cfg ? cfg.field : null;
+
+  // Filter books
+  if (field) {
+    displayedBooks = allBooks.filter(b => {
+      const val = b[field];
+      if (!val) return false;
+      return val.toLowerCase().split(',').map(v=>v.trim()).some(v => v === filterValue.toLowerCase());
+    });
+  } else {
+    // Title/author search — handled separately
+    displayedBooks = allBooks;
+  }
+
+  document.getElementById('results-title').innerHTML =
+    `<span style="color:var(--coral)">${filterValue}</span>`;
+  document.getElementById('results-count').textContent =
+    `${displayedBooks.length.toLocaleString()} books`;
+
+  // Grade filter bar — show for teachers
+  buildGradeFilterBar();
+
+  renderBookCards();
+  goTo('screen-results');
+}
+
+function buildGradeFilterBar() {
+  const bar = document.getElementById('grade-filter-bar');
+  const chipRow = document.getElementById('grade-chip-row');
+
+  if (currentUser !== 'teacher') { bar.classList.remove('visible'); return; }
+
+  const gradeOrder = ['PreK-K','Grades 1-2','Grades 2-3','Grades 3-4','Grades 4-5',
+                      'Grades 4-6','Grades 5-7','Grades 6-8','Grades 7-9','Grades 9-12'];
+  const gradesInSet = new Set();
+  displayedBooks.forEach(b => { if (b.Grade_Level) gradesInSet.add(b.Grade_Level); });
+
+  if (gradesInSet.size < 2) { bar.classList.remove('visible'); return; }
+
+  chipRow.innerHTML = '';
+  // "All" chip
+  const allChip = document.createElement('button');
+  allChip.className = 'chip active';
+  allChip.textContent = 'All Grades';
+  allChip.onclick = () => { selectedGrade = null; setActiveChip(allChip); renderBookCards(); };
+  chipRow.appendChild(allChip);
+
+  gradeOrder.filter(g => gradesInSet.has(g)).forEach(grade => {
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.textContent = grade;
+    chip.onclick = () => { selectedGrade = grade; setActiveChip(chip); renderBookCards(); };
+    chipRow.appendChild(chip);
+  });
+
+  bar.classList.add('visible');
+}
+
+function setActiveChip(activeEl) {
+  document.querySelectorAll('#grade-chip-row .chip').forEach(c => c.classList.remove('active'));
+  activeEl.classList.add('active');
+}
+
+function renderBookCards() {
+  const grid   = document.getElementById('books-grid');
+  const empty  = document.getElementById('empty-state');
+  const more   = document.getElementById('load-more-wrap');
+
+  let filtered = displayedBooks;
+  if (selectedGrade) {
+    filtered = displayedBooks.filter(b => b.Grade_Level === selectedGrade);
+  }
+
+  document.getElementById('results-count').textContent =
+    `${filtered.length.toLocaleString()} books`;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+    more.classList.add('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  const slice = filtered.slice(0, displayCount);
+  grid.innerHTML = '';
+
+  slice.forEach((book, idx) => {
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.style.animationDelay = `${(idx % PAGE_SIZE) * 18}ms`;
+
+    const coverHTML = book.Cover_URL
+      ? `<img class="book-cover" src="${book.Cover_URL}" alt="${escHtml(book.Title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      + `<div class="book-cover-placeholder" style="display:none"><div class="placeholder-title">${escHtml(book.Title||'')}</div><div class="placeholder-author">${escHtml(book.Author||'')}</div></div>`
+      : `<div class="book-cover-placeholder"><div class="placeholder-title">${escHtml(book.Title||'')}</div><div class="placeholder-author">${escHtml(book.Author||'')}</div></div>`;
+
+    const tag = book.Genre_Readable || book.Genre_Standard || '';
+    card.innerHTML = `
+      ${coverHTML}
+      <div class="book-info">
+        <div class="book-title">${escHtml(book.Title||'Untitled')}</div>
+        <div class="book-author">${escHtml(book.Author||'')}</div>
+        ${tag ? `<span class="book-tag">${escHtml(tag)}</span>` : ''}
+      </div>`;
+
+    card.onclick = () => openModal(book);
+    grid.appendChild(card);
+  });
+
+  if (filtered.length > displayCount) {
+    more.classList.remove('hidden');
+    more._filtered = filtered; // store for load more
+  } else {
+    more.classList.add('hidden');
+  }
+}
+
+function loadMore() {
+  displayCount += PAGE_SIZE;
+  renderBookCards();
+  // Don't scroll — let user naturally scroll down
+}
+
+// ════════════════════════════════════════════════════════════
+//  TITLE SEARCH
+// ════════════════════════════════════════════════════════════
+async function doTitleSearch(userType) {
+  currentUser = userType;
+  const inputId = userType === 'student' ? 'student-title-input' : 'teacher-title-input';
+  const query = document.getElementById(inputId).value.trim().toLowerCase();
+  if (!query) return;
+
+  activeFilter = { type: 'search', value: query };
+  selectedGrade = null;
+  displayCount = PAGE_SIZE;
+
+  buildBreadcrumb('results-breadcrumb', 'search', query);
+  document.getElementById('results-title').innerHTML =
+    `Results for <span style="color:var(--coral)">"${escHtml(query)}"</span>`;
+
+  goTo('screen-results');
+  document.getElementById('loading-state').classList.remove('hidden');
+  document.getElementById('books-grid').innerHTML = '';
+
+  if (!dataLoaded) await loadData();
+
+  displayedBooks = allBooks.filter(b => {
+    const q = query;
+    return (b.Title  && b.Title.toLowerCase().includes(q)) ||
+           (b.Author && b.Author.toLowerCase().includes(q)) ||
+           (b.Series_Name_AI && b.Series_Name_AI.toLowerCase().includes(q));
+  });
+
+  document.getElementById('loading-state').classList.add('hidden');
+  document.getElementById('results-count').textContent =
+    `${displayedBooks.length.toLocaleString()} books`;
+
+  buildGradeFilterBar();
+  renderBookCards();
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODAL
+// ════════════════════════════════════════════════════════════
+function openModal(book) {
+  // Cover
+  const coverWrap = document.getElementById('modal-cover-wrap');
+  if (book.Cover_URL) {
+    coverWrap.innerHTML =
+      `<div class="modal-cover"><img src="${book.Cover_URL}" alt="${escHtml(book.Title)}" onerror="this.parentElement.innerHTML='📖'"></div>`;
+  } else {
+    coverWrap.innerHTML = `<div class="modal-cover-placeholder">📖</div>`;
+  }
+
+  document.getElementById('modal-title').textContent  = book.Title || 'Untitled';
+  document.getElementById('modal-author').textContent = book.Author || '';
+
+  // Header tags
+  const tagContainer = document.getElementById('modal-header-tags');
+  tagContainer.innerHTML = '';
+  if (book.Grade_Level) addTag(tagContainer, book.Grade_Level, 'tag-sky');
+  if (book.Genre_Readable) addTag(tagContainer, book.Genre_Readable, 'tag-gold');
+  if (book.Language_Verified && book.Language_Verified !== 'English')
+    addTag(tagContainer, book.Language_Verified, 'tag-green');
+  if (parseInt(book.Diversity_Score) >= 2) addTag(tagContainer, 'Diverse', 'tag-coral');
+
+  // Synopsis
+  document.getElementById('modal-synopsis').textContent =
+    book.Synopsis || book.Synopsis_Raw || 'No description available.';
+
+  // Meta grid
+  const meta = document.getElementById('modal-meta');
+  meta.innerHTML = '';
+  const metaFields = [
+    ['Publisher',  book.Publisher],
+    ['Year',       book.Year_Published],
+    ['Format',     book.Format_Tags],
+    ['Call Number',book['Call Number']],
+    ['Copies',     book['Total Copies'] != null ? `${book['Total Copies']} in collection` : null],
+    ['Series',     book.Series_Name_AI ? `${book.Series_Name_AI}${book.Series_Number_AI?' #'+book.Series_Number_AI:''}` : null],
+  ];
+  metaFields.forEach(([label, val]) => {
+    if (!val) return;
+    meta.innerHTML += `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${escHtml(String(val))}</div></div>`;
+  });
+
+  // Themes
+  const themeChips = document.getElementById('modal-theme-chips');
+  themeChips.innerHTML = '';
+  const themes = (book.Themes || '').split(',').map(t=>t.trim()).filter(Boolean).slice(0,10);
+  themes.forEach(t => {
+    const chip = document.createElement('span');
+    chip.className = 'theme-chip';
+    chip.textContent = t;
+    chip.onclick = () => { closeModal(); showResults('theme', t.charAt(0).toUpperCase()+t.slice(1)); };
+    themeChips.appendChild(chip);
+  });
+  document.getElementById('modal-themes-wrap').style.display = themes.length ? '' : 'none';
+
+  // Curriculum (teacher only)
+  const teacherSection = document.getElementById('modal-teacher-section');
+  const curriculumList = document.getElementById('modal-curriculum');
+  if (currentUser === 'teacher' && book.Curriculum_Connections) {
+    const items = book.Curriculum_Connections.split(',').map(c=>c.trim()).filter(Boolean);
+    curriculumList.innerHTML = items.map(i=>`<li>${escHtml(i)}</li>`).join('');
+    teacherSection.classList.add('visible');
+  } else {
+    teacherSection.classList.remove('visible');
+  }
+
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function addTag(container, text, cls) {
+  const span = document.createElement('span');
+  span.className = `modal-tag ${cls}`;
+  span.textContent = text;
+  container.appendChild(span);
+}
+
+function closeModal(event) {
+  if (event && event.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ════════════════════════════════════════════════════════════
+//  BREADCRUMBS
+// ════════════════════════════════════════════════════════════
+function buildBreadcrumb(containerId, filterType, filterValue) {
+  const container = document.getElementById(containerId);
+  const userLabel = currentUser === 'student' ? 'Student' : 'Teacher';
+  const userScreen = currentUser === 'student' ? 'screen-student' : 'screen-teacher';
+  const categoryLabel = CATEGORY_CONFIG[filterType] ? CATEGORY_CONFIG[filterType].label : 'Search';
+
+  let html = `<span class="breadcrumb-item" onclick="goTo('screen-who')">Find a Book</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-item" onclick="goTo('${userScreen}')">${userLabel}</span>`;
+
+  if (filterType && filterType !== 'search') {
+    html += `<span class="breadcrumb-sep">›</span>`;
+    if (filterValue) {
+      html += `<span class="breadcrumb-item" onclick="browseBy('${filterType}','${currentUser}')">${categoryLabel}</span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">${escHtml(filterValue)}</span>`;
+    } else {
+      html += `<span class="breadcrumb-current">${categoryLabel}</span>`;
+    }
+  } else if (filterType === 'search') {
+    html += `<span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Search: "${escHtml(filterValue||'')}"</span>`;
+  }
+
+  container.innerHTML = html;
+}
+
+// ════════════════════════════════════════════════════════════
+//  UTILITY
+// ════════════════════════════════════════════════════════════
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Preload data on page load so browsing feels instant
+window.addEventListener('load', () => { loadData(); });
+</script>
+</body>
+</html>
